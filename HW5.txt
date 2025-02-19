@@ -1,0 +1,60 @@
+1. Зарегистрироваться в Dockerhub.
+
+Зарегистрировался.
+-------------------------------------------------------------------------------------------------------------------------------------
+2. Создать свой любой имадж(использовать Dockerfile) и запушить имадж в свой репозиторий в Dockerhub. Репозиторий сделать приватный.
+
+Создал Dockerfile со след. текстом:
+FROM ubuntu:16.04
+
+RUN apt-get -y update
+RUN apt-get -y install apache2
+
+RUN echo 'Hello World from Docker!' > /var/www/html/index.html
+
+
+CMD ["/usr/sbin/apache2ctl", "-D","FOREGROUND"]
+EXPOSE 80
+
+Далее ввожу команду 
+$ docker build -t vyacheslav94/devops_lessons:v1 .
+Создался image, проверяем: $ docker images
+REPOSITORY                    TAG       IMAGE ID       CREATED          SIZE
+vyacheslav94/devops_lessons   v1        8015fd459b86   19 minutes ago   261MB
+
+$ docker run -d -p 7777:80 yacheslav94/devops_lessons:v1
+b1abc8b660094ffb4ceae063ccc69a12c3ac92a5d00f5bdf5f63ffe42b23d1b3
+Проверили что контейнер с веб-сервером запускается, удаляем контейнер.
+$ docker rm -f -v $(docker ps -q)
+Логинимся в докер хаб
+$ docker login
+Пушим наш имейдж в репозиторий
+$ docker push vyacheslav94/devops_lessons:v1
+The push refers to repository [docker.io/vyacheslav94/devops_lessons]
+6b472bfb2ce9: Pushed
+1802be9a995c: Pushed
+14e51b04daa8: Pushed
+1251204ef8fc: Mounted from library/ubuntu
+47ef83afae74: Mounted from library/ubuntu
+df54c846128d: Mounted from library/ubuntu
+be96a3f634de: Mounted from library/ubuntu
+v1: digest: sha256:52969b3fcd27e88b36ac5a27d912780821a66618088cfa81db25edbfa23aa78a size: 1781
+
+Все, в частном репозитории лежит мой Docker image.
+-------------------------------------------------------------------------------------------------------------------------------------
+3. Изучить разницу между CMD и Entrypoint.
+CMD и ENTRYPOINT — это инструкции в Dockerfile, которые определяют, как контейнер будет запускаться, они работают немного по-разному.
+
+CMD задает команду по умолчанию, которая будет выполнена, когда контейнер запустится.
+Мы можем переопределить CMD, передав другую команду при запуске контейнера.
+Например, если в Dockerfile указано CMD ["echo", "Hello World"], то при запуске контейнера без указания команды он 
+выведет "Hello World". Но если мы запустим контейнер с командой, например docker run myimage echo "Hi", то он выведет "Hi".
+
+
+ENTRYPOINT также задает команду, но она не может быть переопределена при запуске контейнера.
+Она всегда будет выполнена, и любые аргументы, которые мы передаем при запуске контейнера, будут добавлены к этой команде.
+Например, если в Dockerfile указано ENTRYPOINT ["echo"], и мы запустим контейнер с командой docker run myimage 
+"Hello World", то он выведет "Hello World".
+В общем, CMD — это команда по умолчанию, которую можно изменить, а ENTRYPOINT — это основная команда, которую нельзя 
+изменить, и к которой можно добавлять аргументы.
+-------------------------------------------------------------------------------------------------------------------------------------
