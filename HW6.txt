@@ -1,0 +1,59 @@
+1. Через volume подкинуть конфиг в nginx контейнер, чтобы на страничке в браузере появилась слово Docker (либо через curl это проверить).
+  1) Создал директорию
+	mkdir nginx-docker
+	cd nginx-docker
+  2) Создал файл default.conf в директории nginx-docker со следующим содержимым:
+
+server {
+    listen 80;
+
+    location / {
+        default_type text/plain;
+        return 200 'Docker';
+    }
+}
+  3) Запустил Nginx и подключил мой конфигурационный файл через volume:
+
+	docker run --name my-nginx -v $(pwd)/default.conf:/etc/nginx/conf.d/default.conf -p 8080:80 -d nginx
+  4) Проверяем.
+	Открыл браузер и перешел по адресу http://localhost:8080
+Вижу слово Docker.
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+2. То же самое сделать через docker-compose.
+
+ 1) Создал файл docker-compose.yml в той же директории со следующим содержимым:
+	version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./default.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "8080:80"
+  2) Запустил контейнер с помощью Docker Compose:
+	docker compose up -d
+[+] Running 9/9
+ ✔ nginx Pulled                                                                                           6.2s
+   ✔ f18232174bc9 Pull complete                                                                           1.0s
+   ✔ ccc35e35d420 Pull complete                                                                           1.6s
+   ✔ 43f2ec460bdf Pull complete                                                                           1.6s
+   ✔ 984583bcf083 Pull complete                                                                           1.7s
+   ✔ 8d27c072a58f Pull complete                                                                           1.7s
+   ✔ ab3286a73463 Pull complete                                                                           1.7s
+   ✔ 6d79cc6084d4 Pull complete                                                                           1.8s
+   ✔ 0c7e4c092ab7 Pull complete                                                                           4.1s
+[+] Running 2/2
+ ✔ Network nginx-docker_default    Created                                                                0.3s
+ ✔ Container nginx-docker-nginx-1  Started                                                                0.9s
+
+  3) Проверил что контейнер запустился:
+	docker compose ps
+slava@slava-VirtualBox:~/devops_lessons/Lesson6/nginx-docker$ docker compose ps
+
+NAME                   IMAGE          COMMAND                  SERVICE   CREATED         STATUS         PORTS
+nginx-docker-nginx-1   nginx:alpine   "/docker-entrypoint.…"   nginx     5 minutes ago   Up 5 minutes   0.0.0.0:8080->80/tcp, :::8080->80/tcp
+
+  4) Проверяем.
+	Открыл браузер и перешел по адресу http://localhost:8080
+Вижу слово Docker.
