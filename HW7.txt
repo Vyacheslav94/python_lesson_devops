@@ -1,0 +1,109 @@
+1. Развернуть Jenkins.
+Установил Jenkins на виртуальную машину (с использованием VPN). Открывается в браузере по порту 8080.
+-------------------------------------------------------------------------------------------------------------------------------------------
+2. Подключить Linux Slave к Jenkins.
+
+Создал виртуальный сервер Ubuntu/ 192.168.56.107/
+Устаноовил на него java openjdk version "17.0.14" 2025-01-21
+Создал директорию /home/slava/jenkins (для сохранения файлов jenkinsa в этой директории)
+На мастер сервере мы генерируем ssh-key:
+ssh-keygen -t rsa
+Копируем ID на наш slave-сервер:
+ssh-copy-id slava@192.168.56.107
+Подключаемся по ssh к нему, проверяем, что подключение работает.
+Копируем наш приватный ключ cat ~/.ssh/id_rsa
+
+Заходим в jenkins. В настройках выбираем Nodes -> +New Node
+Добавил Node имя Agent1
+Количество процессов-исполнителей 2
+Удалённая корневая директория /home/slava/jenkins
+Лэйблы ubuntu_agent1
+Способ запуска Launch ahents via SSH (для этого надо установить плагин SSH Agent)
+Добавил Host, Credentials, Host Key Verification Strategy -> Manually trusted key
+Сохранил. - Agent заработал, можно выполнять на нем билды.
+
+Для того чтобы выполнить билд на slave-сервере, вместо Мастера, необходимо зайти в нужную Job и найти пункт 
+Ограничить лейблы сборщиков, которые могут исполнять данную задачу и выбрать наш лейбл ubuntu_agent1.
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+3. Создать Jenkins pipeline, pipeline должен уметь разворачивать ELK stack. Если не хватает ресурсов, тогда развернуть только Elasticsearch.
+   ELK стек должен разворачиваться на новом слейве.
+
+Вот пример Jenkinsfile, который использовал в pipeline:
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Preparation') {
+            steps {
+                script {
+                    // Убедитесь, что у вас есть необходимые инструменты
+                    sh 'echo "Preparing environment..."'
+                }
+            }
+        }
+
+        stage('Deploy Elasticsearch') {
+            steps {
+                script {
+                    // Команды для установки и настройки Elasticsearch
+                    sh '''
+                    echo "Deploying Elasticsearch..."
+                    # Замените на ваши команды установки
+                    docker run -d --name elasticsearch -e "discovery.type=single-node" -p 9200:9200 elasticsearch:7.10.0
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy Logstash') {
+            steps {
+                script {
+                    // Команды для установки и настройки Logstash
+                    sh '''
+                    echo "Deploying Logstash..."
+                    # Замените на ваши команды установки
+                    docker run -d --name logstash --link elasticsearch:elasticsearch -p 5044:5044 logstash:7.10.0
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy Kibana') {
+            steps {
+                script {
+                    // Команды для установки и настройки Kibana
+                    sh '''
+                    echo "Deploying Kibana..."
+                    # Замените на ваши команды установки
+                    docker run -d --name kibana --link elasticsearch:elasticsearch -p 5601:5601 kibana:7.10.0
+                    '''
+                }
+            }
+        }
+
+        stage('Post-deployment') {
+            steps {
+                script {
+                    // Проверка статуса развертывания
+                    sh 'curl -X GET "localhost:9200/_cluster/health?pretty"'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline finished.'
+        }
+    }
+}
+Объяснение:
+Preparation: Подготовка окружения. Здесь можно добавить проверку зависимостей или другие подготовительные шаги.
+Deploy Elasticsearch: Этот этап запускает контейнер Elasticsearch. 
+Deploy Logstash: Запускает контейнер Logstash и связывает его с Elasticsearch.
+Deploy Kibana: Запускает контейнер Kibana и связывает его с Elasticsearch.
+Post-deployment: Проверяет статус кластера Elasticsearch, чтобы убедиться, что все работает корректно.
+-------------------------------------------------------------------------------------------------------------------------------------------
