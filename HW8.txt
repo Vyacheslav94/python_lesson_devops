@@ -1,0 +1,53 @@
+1. Подключить Windows Slave к Jenkins.
+    1)Создал ВМ на Windows 10 (IP 192.168.56.117)
+    2)Установил на ВМ Java такой же версии на мастере (17.0.14)
+    3)На мастере добавил новую ноду, Agent3
+       Number of executors - 2
+       Remote root directory - c:\Jenkins
+       Labels - windows
+       Usage - Only bild jobs with label expressions matching this node
+       Launch method - Launch agent by connecting it to the controller
+       Availability - Keep this agent online as much as possible
+       Поставил галку Keep Swarm client node after agent disconnected в разделе Node Properties.
+     Сохранил.
+    4)При входе с мастера на страницу агента написана инструкция для подключения, её и используем.
+    5)На нашем Windows агенте прописываем следующее:
+       curl.exe -sO http://192.168.56.115:8080/jnlpJars/agent.jar
+       java -jar agent.jar -url http://192.168.56.115:8080/ -secret 
+52f564b01375919294b61d7d3344dcdd197ab5e2fde8d711cee9259843751001 -name Agent3 -webSocket -workDir "c:\Jenkins"
+    6)Агент нашел нашу Мастер-ноду и подключился.
+------------------------------------------------------------------------------------------------------------------------
+2. Создать джобу, которая запустит на новом слейве любой bat скрипт.
+    1)На агенте создал файл скрипта simple-script.bat cо след. содержимым:
+
+echo Hello, Jenkins! > hello.txt
+
+type hello.txt
+
+echo Script execution completed.
+echo Finish!
+
+    2)На мастере создал новый item (Freestyle project) - MyJobNumber4
+    3)В разделе "Build" выбрал "Add build step" и затем "Execute Windows batch command"
+    4)В текстовое поле вставил путь к моему скрипту:
+	C:\Jenkins\scripts\simple_script.bat
+    5)Сохранил проект
+    6)Запускаем сборку
+    7)Started by user vyacheslav
+	Running as SYSTEM
+	Building remotely on Agent3 (windows) in workspace c:\Jenkins\workspace\MyJobNumber4
+	[MyJobNumber4] $ cmd /c call C:\Users\ycc58\AppData\Local\Temp\jenkins13536929321226745809.bat
+	
+	c:\Jenkins\workspace\MyJobNumber4>C:\Jenkins\scripts\simple-script.bat
+	
+	c:\Jenkins\workspace\MyJobNumber4>echo Hello, Jenkins!  1>hello.txt 
+
+	c:\Jenkins\workspace\MyJobNumber4>type hello.txt 
+	Hello, Jenkins! 
+
+	c:\Jenkins\workspace\MyJobNumber4>echo Script execution completed. 
+	Script execution completed.
+
+	c:\Jenkins\workspace\MyJobNumber4>echo Finish! 
+	Finish!
+	Finished: SUCCESS
