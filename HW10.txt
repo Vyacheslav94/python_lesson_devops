@@ -1,0 +1,66 @@
+1. Настроить автоскейлинг для сервера t2.micro, если на сервере нагрузка на CPU больше 80% то должен подниматься еще один инстанс.
+
+1.1 Изначально необходимо создать Launch template - такой шаблон, который применим к нашей группе Auto Scaling group.
+Выбираем пункт Create launch template под последней табличкой в центре.
+Задал имя шаблона - vyach_templatehw10v2. 
+Выбрал AMI - Ubuntu.
+Security group - Default
+Далее инстанс тайп - выбрал t2.micro. и нажал справа Create launch template
+Key Pair (for SSH access): Выбрал существующую пару ключей devops
+Network Settings: Выбрал VPC и подсеть, в которой будет запускаться инстанс.
+Create launch template!
+
+
+1.2 Создаем  Auto Scaling group. Выбираем раздел Auto Scaling -> Auto Scaling Groups.
+В меню создания Auto Scaling Groups выбрал созданный мной Launch Template -> Next
+Auto Scaling group name: Ввел имя для моей группы vyach_hw10v6    -> 
+Group size: Установил начальное количество инстансов на 1 (Desired capacity), 
+минимальное количество на 1 (Minimum capacity), максимальное количество на 2 (Maximum capacity).
+Network: Выбрал VPC и подсеть, как и в шаблоне. 
+Выбрал VPC - default, Subnet выбрал us-east-1d
+Available Zone - Balanced best effort -> Next
+
+Следущая вкладка - Выбрал Scaling limits - Max desired capacity 2 
+Выбираем Target tracking scaling policy -> Target Tracking Policy -> Metric type-> Average CPU utilization -> Target value выставил 80
+--> Next 
+Следущая вкладка - нотификации ->Next
+Следущая вкладка - tags ->Next
+Проверил все настройки и нажал "Create Auto Scaling group".
+1.3 После создания группы автоскейлинга, я следил за её состоянием в разделе "Auto Scaling Groups".
+Создался инстанс автоматически, я могу следить за созданными машинами в разделе Instance management моей Auto Scaling Group.
+Необходимо сделать нагрузку на машине более 80% CPU, для этого использовал stress-ng утилиту.
+
+sudo apt update
+sudo apt install stress-ng
+stress-ng -c 1 -l 83
+Спустя 200 секунд, машине реагирует и автоматически создаёт 2ой инстанс.
+В конце установил значение Desired capacity 0 чтобы терминировать созданные инстансы.
+----------------------------------------------------------------------------------------------------------------------------------------------
+
+2. Создать Ubuntu EC2 t2.micro и прикрепить к нему второй volume и потом увеличить его на 10GB.
+У меня есть созданный t2.micro сервер. Переходим в раздел Elastic Block Store (EBS) в консоли EC2 - выбираем Volumes -> Create volume
+Выбрал раздел тома General Purpose SSD (gp3) и Size 10GB и выбрал Availability Zone us-east-1a - там где расположен инстанс. 
+Нажал Create Volume.
+После создания тома, выберал его в списке и нажмал Actions, затем выбрал Attach Volume.
+Выбираю мой инстанс в EC2 и нажимаем Attach.
+Теперь смотрим на инстансе размер командой lsblk
+xvdbz    202:19712  0   10G  0 disk 
+Добавился диск на 10ГБ.
+
+Теперь как увеличить размер диска еще на +10GB.
+В разделе Volumes выбераю том, который я хочу увеличить -> Нажимаю Actions и выбераю Modify Volume -> Изменяю с 10 до 20GiB -Подтверждаю изменения
+Зайдем на сервер и сново проверим размер диска.
+
+ubuntu@ip-172-31-18-180:~$ lsblk
+NAME     MAJ:MIN   RM  SIZE RO TYPE MOUNTPOINTS
+loop0      7:0      0 26.3M  1 loop /snap/amazon-ssm-agent/9881
+loop1      7:1      0 73.9M  1 loop /snap/core22/1722
+loop2      7:2      0 44.4M  1 loop /snap/snapd/23545
+xvda     202:0      0    8G  0 disk 
+├─xvda1  202:1      0    7G  0 part /
+├─xvda14 202:14     0    4M  0 part 
+├─xvda15 202:15     0  106M  0 part /boot/efi
+└─xvda16 259:0      0  913M  0 part /boot
+xvdbz    202:19712  0   20G  0 disk 
+ubuntu@ip-172-31-18-180:~$ 
+После всех манипуляций удалил данный Volume.
